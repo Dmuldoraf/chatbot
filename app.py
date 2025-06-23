@@ -1,7 +1,8 @@
 from flask import Flask, render_template_string, request, jsonify
+import requests
 
 app = Flask(__name__)
-
+secret_key = '8J5I18LCfCgRaaAzNNcBrx325ACfTfP1cBPHDeo38Osh4Uor9mZlJQQJ99BFACi5YpzAArohAAABAZBS2g0K'
 HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -64,8 +65,11 @@ HTML = """
 """
 
 def get_bot_response(message):
-    # Placeholder for chatbot logic
-    return "This is a placeholder response."
+    res = requests.get(
+        'https://webchat.botframework.com/api/tokens',
+        headers={'Authorization': f'BotConnector {secret_key}'},)
+    print(res)
+    return res.status_code
 
 @app.route('/')
 def index():
