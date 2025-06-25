@@ -65,53 +65,13 @@ HTML = """
 </body>
 </html>
 """
-
 def get_bot_response(message):
-    # Step 1: Get Direct Line Token
-    token_res = requests.post(
-        'https://directline.botframework.com/v3/directline/tokens/generate',
-        headers={'Authorization': f'Bearer {DIRECT_LINE_SECRET}'}
-    )
-    token = token_res.json()['token']
-
-    # Step 2: Start Conversation
-    print('Token:', token)
-    conv_res = requests.post(
-        'https://directline.botframework.com/v3/directline/conversations',
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    conv_data = conv_res.json()
-    conv_id = conv_data['conversationId']
-
-    # Step 3: Send user message
-    user_id = str(uuid.uuid4())  # any unique user id
-    print('Conversation ID:', conv_id)
-    requests.post(
-        f'https://directline.botframework.com/v3/directline/conversations/{conv_id}/activities',
-        headers={
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        },
-        json={
-            "type": "message",
-            "from": {"id": user_id},
-            "text": message
-        }
-    )
-
-    # Step 4: Poll for bot response (simplified with sleep)
-    import time
-    time.sleep(5)
-    messages_res = requests.get(
-        f'https://directline.botframework.com/v3/directline/conversations/{conv_id}/activities',
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    print('Messages Response:', messages_res.json())
-    activities = messages_res.json()['activities']
-    bot_messages = [a['text'] for a in activities if a['from']['id'] != user_id and a['type'] == 'message']
-
-    return bot_messages[-1] if bot_messages else "No response from bot."
-
+    res = requests.get(
+        'https://webchat.botframework.com/api/tokens',
+        headers={'Authorization': f'BotConnector {secret_key}'},)
+    print(res)
+    return res.status_code
+    
 @app.route('/')
 def index():
     return render_template_string(HTML)
