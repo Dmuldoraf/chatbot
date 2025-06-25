@@ -65,4 +65,4 @@ jobs:
         with:
           app-name: 'ebi-grp-005-webApp'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_051C9C1D7056479F8210A6C599AEF6B9 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_003C1303E9524E5685F01DB20EFD26AA }}
