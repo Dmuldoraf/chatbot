@@ -1,6 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify
 import requests
-import uuid
 
 
 app = Flask(__name__)
@@ -67,7 +66,7 @@ HTML = """
 """
 def get_bot_response(message):
     res = requests.get(
-        'https://webchat.botframework.com/api/tokens',
+        'https://directline.botframework.com/v3/directline/tokens/generate',
         headers={'Authorization': f'BotConnector {DIRECT_LINE_SECRET}'},)
     print(res)
     return res.status_code
