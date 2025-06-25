@@ -679,150 +679,89 @@ def internal_error(error):
     }), 500
 
 #########################################################
-# Add this to your existing Flask app, after the other route definitions
+# Add this route to your existing Flask app (paste.txt)
+# Add it after your other route definitions, before the if __name__ == '__main__': line
 
-# @app.route('/api/messages', methods=['POST'])
-# def bot_messages():
-#     """
-#     Endpoint that receives messages from Azure Bot Framework
-#     This is where your bot sends messages to your web app
-#     """
-#     try:
-#         # Get the activity (message) from Azure Bot Framework
-#         activity = request.get_json()
+@app.route('/api/messages', methods=['POST', 'GET'])
+def api_messages():
+    """
+    Bot Framework messaging endpoint
+    This is where Azure Bot Framework sends messages to your web app
+    """
+    try:
+        if request.method == 'GET':
+            # Handle GET requests (for testing)
+            return jsonify({
+                'status': 'Bot messaging endpoint is active',
+                'timestamp': datetime.now().isoformat(),
+                'endpoint': '/api/messages',
+                'methods': ['POST', 'GET']
+            })
         
-#         logger.info(f"Received activity from bot: {activity}")
-        
-#         # Validate the activity
-#         if not activity:
-#             return jsonify({'error': 'No activity received'}), 400
-        
-#         # Process different types of activities
-#         activity_type = activity.get('type', '')
-        
-#         if activity_type == 'message':
-#             # Handle incoming message from bot
-#             text = activity.get('text', '')
-#             from_user = activity.get('from', {})
-#             conversation = activity.get('conversation', {})
+        elif request.method == 'POST':
+            # Handle POST requests from Bot Framework
+            activity = request.get_json()
             
-#             logger.info(f"Message from bot: {text}")
+            if not activity:
+                logger.warning("Received empty activity")
+                return jsonify({'error': 'No activity received'}), 400
             
-#             # Here you can process the message and send a response back
-#             # For now, let's just echo it back
-#             response_activity = {
-#                 'type': 'message',
-#                 'text': f"Web app received: {text}",
-#                 'from': {
-#                     'id': 'webapp',
-#                     'name': 'Web App'
-#                 },
-#                 'conversation': conversation,
-#                 'replyToId': activity.get('id')
-#             }
+            # Log the incoming activity
+            logger.info(f"Received Bot Framework activity: {json.dumps(activity, indent=2)}")
             
-#             # You can also store the message in a database or process it however you need
-#             # For example, update UI state, trigger notifications, etc.
+            activity_type = activity.get('type', '')
             
-#             return jsonify(response_activity)
-            
-#         elif activity_type == 'conversationUpdate':
-#             # Handle conversation updates (like bot/user joining)
-#             logger.info("Conversation update received")
-#             return jsonify({'status': 'ok'})
-            
-#         else:
-#             # Handle other activity types
-#             logger.info(f"Received activity type: {activity_type}")
-#             return jsonify({'status': 'ok'})
+            if activity_type == 'message':
+                # Handle incoming message from bot
+                text = activity.get('text', '')
+                conversation_id = activity.get('conversation', {}).get('id', '')
+                from_info = activity.get('from', {})
+                
+                logger.info(f"Bot message: '{text}' from {from_info.get('name', 'Unknown')} in conversation {conversation_id}")
+                
+                # Create response activity
+                response_activity = {
+                    'type': 'message',
+                    'text': f"Web app received your message: {text}",
+                    'conversation': activity.get('conversation'),
+                    'from': {
+                        'id': 'webapp-bot',
+                        'name': 'Web App Bot'
+                    }
+                }
+                
+                return jsonify(response_activity)
+                
+            elif activity_type == 'conversationUpdate':
+                # Handle conversation updates (users joining/leaving)
+                logger.info("Bot Framework conversation update received")
+                return jsonify({'type': 'conversationUpdate', 'text': 'Hello! Welcome to the conversation.'})
+                
+            else:
+                # Handle other activity types
+                logger.info(f"Bot Framework activity type received: {activity_type}")
+                return jsonify({'type': 'message', 'text': f'Received activity of type: {activity_type}'})
     
-#     except Exception as e:
-#         logger.error(f"Error in bot messages endpoint: {str(e)}")
-#         return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Error in /api/messages endpoint: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 
-# # Add authentication middleware if needed (recommended for production)
-# def verify_bot_request(request):
-#     """
-#     Verify that the request is actually coming from Azure Bot Framework
-#     This is important for security in production
-#     """
-#     # In production, you should verify the JWT token from Azure
-#     # For now, we'll just check if it looks like a bot request
-    
-#     # Check for required headers
-#     if not request.headers.get('Authorization'):
-#         return False
-    
-#     # Additional verification logic can be added here
-#     # See: https://docs.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication
-    
-#     return True
-
-
-# # Optional: Add a webhook verification endpoint
-# @app.route('/api/webhook-verify', methods=['GET'])
-# def webhook_verify():
-#     """
-#     Endpoint for webhook verification during bot setup
-#     """
-#     return jsonify({
-#         'status': 'verified',
-#         'timestamp': datetime.now().isoformat(),
-#         'endpoint': '/api/messages'
-#     })
-
-
-# # Update your existing chat endpoint to work bidirectionally
-# @app.route('/api/send-to-bot', methods=['POST'])
-# def send_to_bot():
-#     """
-#     Send a message from web app to bot (using Direct Line)
-#     This is your existing functionality, just renamed for clarity
-#     """
-#     try:
-#         data = request.get_json()
-#         message = data.get('message', '').strip()
-        
-#         if not message:
-#             return jsonify({
-#                 'status': 'error',
-#                 'message': 'No message provided'
-#             }), 400
-        
-#         # Check if bot credentials are configured
-#         if not BOT_DIRECT_LINE_SECRET:
-#             return jsonify({
-#                 'status': 'error',
-#                 'message': 'Bot not configured. Please set BOT_DIRECT_LINE_SECRET environment variable.'
-#             })
-        
-#         # Send message to bot via Direct Line
-#         bot_response = bot_connector.send_message(message)
-        
-#         # Handle response (your existing logic)
-#         if isinstance(bot_response, dict) and 'error' in bot_response:
-#             return jsonify({
-#                 'status': 'error',
-#                 'message': bot_response['error'],
-#                 'timestamp': datetime.now().isoformat()
-#             })
-        
-#         return jsonify({
-#             'status': 'success',
-#             'message': 'Message sent to bot',
-#             'bot_responses': bot_response,
-#             'timestamp': datetime.now().isoformat()
-#         })
-    
-#     except Exception as e:
-#         logger.error(f"Error sending to bot: {str(e)}")
-#         return jsonify({
-#             'status': 'error',
-#             'message': str(e),
-#             'timestamp': datetime.now().isoformat()
-#         }), 500
-
+# Also add a simple test endpoint to verify your bot setup
+@app.route('/api/bot-test')
+def bot_test():
+    """Test endpoint to verify bot configuration"""
+    return jsonify({
+        'message': 'Bot test endpoint working',
+        'messaging_endpoint': '/api/messages',
+        'timestamp': datetime.now().isoformat(),
+        'bot_configured': bool(BOT_DIRECT_LINE_SECRET),
+        'app_id_set': bool(BOT_APP_ID),
+        'service_url': BOT_SERVICE_URL
+    })
 
 
 if __name__ == '__main__':
