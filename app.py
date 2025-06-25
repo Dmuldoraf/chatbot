@@ -55,7 +55,7 @@ class BotConnector:
         """Send a message to the bot"""
         if not self.conversation_id:
             if not self.start_conversation():
-                return None
+                return {'error': 'Failed to start conversation with bot'}
         
         try:
             headers = {
@@ -73,21 +73,36 @@ class BotConnector:
                 f'{BOT_SERVICE_URL}/v3/directline/conversations/{self.conversation_id}/activities',
                 headers=headers,
                 json=payload,
-                timeout=10
+                timeout=15
             )
             
             if response.status_code == 200:
-                # Wait a moment for bot to process
+                # Wait for bot to process and respond
                 import time
-                time.sleep(1)
+                time.sleep(2)  # Increased wait time
                 return self.get_messages()
+            elif response.status_code == 502:
+                logger.error(f"Bot service error (502): {response.text}")
+                return {'error': 'Bot service is not responding. Please check if your bot is deployed and running.'}
+            elif response.status_code == 401:
+                logger.error(f"Authentication error (401): {response.text}")
+                return {'error': 'Bot authentication failed. Please check your Direct Line secret.'}
+            elif response.status_code == 403:
+                logger.error(f"Forbidden error (403): {response.text}")
+                return {'error': 'Access denied. Please check your bot permissions and Direct Line configuration.'}
             else:
                 logger.error(f"Failed to send message: {response.status_code} - {response.text}")
-                return None
+                return {'error': f'Bot returned error {response.status_code}: {response.text}'}
                 
+        except requests.exceptions.Timeout:
+            logger.error("Request timed out")
+            return {'error': 'Request to bot service timed out'}
+        except requests.exceptions.ConnectionError:
+            logger.error("Connection error")
+            return {'error': 'Could not connect to bot service'}
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
-            return None
+            return {'error': f'Unexpected error: {str(e)}'}
     
     def get_messages(self):
         """Get messages from the bot"""
@@ -241,7 +256,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <h1>Cloud Übung EBI Gruppe 5</h1>
+        <h1>🚀 Azure Flask Web App</h1>
 
         <div class="card">
             <h3>🤖 Chat with Azure Bot</h3>
@@ -278,6 +293,27 @@ HTML_TEMPLATE = """
             </form>
             <div id="response"></div>
         </div>
+
+        <div class="card">
+            <h3>🔧 Bot Diagnostics</h3>
+            <button onclick="runDiagnostics()" style="margin-bottom: 15px;">Run Bot Diagnostics</button>
+            <div id="diagnosticsResult" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; white-space: pre-wrap; min-height: 100px;">
+                Click "Run Bot Diagnostics" to check bot configuration and connectivity.
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔗 Available Endpoints</h3>
+            <ul>
+                <li><strong>GET /</strong> - This home page with bot chat</li>
+                <li><strong>GET /health</strong> - Health check endpoint</li>
+                <li><strong>POST /api/chat</strong> - Send message to Azure Bot</li>
+                <li><strong>GET /api/bot-diagnostics</strong> - Bot configuration diagnostics</li>
+                <li><strong>POST /api/echo</strong> - Echo API for testing</li>
+                <li><strong>GET /info</strong> - System information</li>
+            </ul>
+        </div>
+    </div>
 
     <script>
         // Chat functionality
@@ -344,6 +380,40 @@ HTML_TEMPLATE = """
                 statusText.textContent = 'Connection error';
             }
         });
+
+        // Bot diagnostics functionality
+        async function runDiagnostics() {
+            const diagnosticsResult = document.getElementById('diagnosticsResult');
+            diagnosticsResult.textContent = 'Running diagnostics...';
+            
+            try {
+                const response = await fetch('/api/bot-diagnostics');
+                const result = await response.json();
+                
+                diagnosticsResult.textContent = JSON.stringify(result, null, 2);
+                
+                // Add interpretation
+                let interpretation = '\n\n=== INTERPRETATION ===\n';
+                if (!result.bot_configured) {
+                    interpretation += '❌ Bot not configured - set BOT_DIRECT_LINE_SECRET\n';
+                } else if (result.direct_line_test && !result.direct_line_test.success) {
+                    interpretation += '❌ Direct Line connection failed\n';
+                    interpretation += `   Status: ${result.direct_line_test.status_code || 'Connection error'}\n`;
+                    interpretation += `   Error: ${result.direct_line_test.error || result.direct_line_test.response_text}\n`;
+                } else {
+                    interpretation += '✅ Direct Line connection successful\n';
+                    interpretation += '   If bot still not responding, check:\n';
+                    interpretation += '   1. Bot service is deployed and running\n';
+                    interpretation += '   2. Bot endpoint URL is correct\n';
+                    interpretation += '   3. Bot authentication is properly configured\n';
+                }
+                
+                diagnosticsResult.textContent += interpretation;
+                
+            } catch (error) {
+                diagnosticsResult.textContent = `Error running diagnostics: ${error.message}`;
+            }
+        }
 
         // Test form functionality
         document.getElementById('testForm').addEventListener('submit', async function(e) {
@@ -432,27 +502,54 @@ def chat_with_bot():
             })
         
         # Send message to bot
-        bot_responses = bot_connector.send_message(message)
+        bot_response = bot_connector.send_message(message)
         
-        if bot_responses is not None:
+        # Handle different response types
+        if isinstance(bot_response, dict) and 'error' in bot_response:
+            # Bot returned an error
+            return jsonify({
+                'status': 'error',
+                'message': bot_response['error'],
+                'user_message': message,
+                'bot_responses': [{
+                    'text': f"❌ Bot Error: {bot_response['error']}",
+                    'timestamp': datetime.now().isoformat(),
+                    'type': 'error'
+                }],
+                'debug_info': {
+                    'conversation_id': bot_connector.conversation_id,
+                    'has_token': bool(bot_connector.token),
+                    'bot_service_url': BOT_SERVICE_URL
+                },
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        elif isinstance(bot_response, list) and len(bot_response) > 0:
+            # Bot returned messages
             return jsonify({
                 'status': 'success',
                 'message': 'Message sent successfully',
                 'user_message': message,
-                'bot_responses': bot_responses,
+                'bot_responses': bot_response,
                 'timestamp': datetime.now().isoformat()
             })
+        
         else:
-            # Fallback response when bot doesn't respond
+            # No response from bot (empty or None)
             return jsonify({
                 'status': 'partial_success',
                 'message': 'Message sent but no bot response received',
                 'user_message': message,
                 'bot_responses': [{
-                    'text': 'Bot is not responding. This might be a configuration issue.',
+                    'text': '🤖 Bot received your message but didn\'t respond. This might be normal depending on your bot\'s logic.',
                     'timestamp': datetime.now().isoformat(),
-                    'type': 'error'
+                    'type': 'info'
                 }],
+                'debug_info': {
+                    'conversation_id': bot_connector.conversation_id,
+                    'response_type': str(type(bot_response)),
+                    'response_length': len(bot_response) if isinstance(bot_response, list) else 0
+                },
                 'timestamp': datetime.now().isoformat()
             })
     
@@ -464,7 +561,62 @@ def chat_with_bot():
             'timestamp': datetime.now().isoformat()
         }), 500
 
-@app.route('/api/echo', methods=['POST'])
+@app.route('/api/bot-diagnostics')
+def bot_diagnostics():
+    """Diagnostic endpoint to check bot configuration"""
+    try:
+        diagnostics = {
+            'bot_configured': bool(BOT_DIRECT_LINE_SECRET),
+            'direct_line_secret_set': bool(BOT_DIRECT_LINE_SECRET),
+            'app_id_set': bool(BOT_APP_ID),
+            'app_password_set': bool(BOT_APP_PASSWORD),
+            'bot_service_url': BOT_SERVICE_URL,
+            'current_conversation_id': bot_connector.conversation_id,
+            'has_token': bool(bot_connector.token),
+            'watermark': bot_connector.watermark,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Test connection to Direct Line API
+        if BOT_DIRECT_LINE_SECRET:
+            try:
+                headers = {
+                    'Authorization': f'Bearer {BOT_DIRECT_LINE_SECRET}',
+                    'Content-Type': 'application/json'
+                }
+                
+                # Test creating a conversation
+                response = requests.post(
+                    f'{BOT_SERVICE_URL}/v3/directline/conversations',
+                    headers=headers,
+                    timeout=10
+                )
+                
+                diagnostics['direct_line_test'] = {
+                    'status_code': response.status_code,
+                    'success': response.status_code == 201,
+                    'response_text': response.text[:200] if response.text else 'No response text'
+                }
+                
+            except Exception as e:
+                diagnostics['direct_line_test'] = {
+                    'error': str(e),
+                    'success': False
+                }
+        else:
+            diagnostics['direct_line_test'] = {
+                'error': 'No Direct Line secret configured',
+                'success': False
+            }
+        
+        return jsonify(diagnostics)
+        
+    except Exception as e:
+        logger.error(f"Error in bot diagnostics: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 def echo_api():
     """Echo API endpoint for testing"""
     try:
@@ -525,6 +677,153 @@ def internal_error(error):
         'message': 'An internal server error occurred.',
         'status_code': 500
     }), 500
+
+#########################################################
+# Add this to your existing Flask app, after the other route definitions
+
+@app.route('/api/messages', methods=['POST'])
+def bot_messages():
+    """
+    Endpoint that receives messages from Azure Bot Framework
+    This is where your bot sends messages to your web app
+    """
+    try:
+        # Get the activity (message) from Azure Bot Framework
+        activity = request.get_json()
+        
+        logger.info(f"Received activity from bot: {activity}")
+        
+        # Validate the activity
+        if not activity:
+            return jsonify({'error': 'No activity received'}), 400
+        
+        # Process different types of activities
+        activity_type = activity.get('type', '')
+        
+        if activity_type == 'message':
+            # Handle incoming message from bot
+            text = activity.get('text', '')
+            from_user = activity.get('from', {})
+            conversation = activity.get('conversation', {})
+            
+            logger.info(f"Message from bot: {text}")
+            
+            # Here you can process the message and send a response back
+            # For now, let's just echo it back
+            response_activity = {
+                'type': 'message',
+                'text': f"Web app received: {text}",
+                'from': {
+                    'id': 'webapp',
+                    'name': 'Web App'
+                },
+                'conversation': conversation,
+                'replyToId': activity.get('id')
+            }
+            
+            # You can also store the message in a database or process it however you need
+            # For example, update UI state, trigger notifications, etc.
+            
+            return jsonify(response_activity)
+            
+        elif activity_type == 'conversationUpdate':
+            # Handle conversation updates (like bot/user joining)
+            logger.info("Conversation update received")
+            return jsonify({'status': 'ok'})
+            
+        else:
+            # Handle other activity types
+            logger.info(f"Received activity type: {activity_type}")
+            return jsonify({'status': 'ok'})
+    
+    except Exception as e:
+        logger.error(f"Error in bot messages endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Add authentication middleware if needed (recommended for production)
+def verify_bot_request(request):
+    """
+    Verify that the request is actually coming from Azure Bot Framework
+    This is important for security in production
+    """
+    # In production, you should verify the JWT token from Azure
+    # For now, we'll just check if it looks like a bot request
+    
+    # Check for required headers
+    if not request.headers.get('Authorization'):
+        return False
+    
+    # Additional verification logic can be added here
+    # See: https://docs.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication
+    
+    return True
+
+
+# Optional: Add a webhook verification endpoint
+@app.route('/api/webhook-verify', methods=['GET'])
+def webhook_verify():
+    """
+    Endpoint for webhook verification during bot setup
+    """
+    return jsonify({
+        'status': 'verified',
+        'timestamp': datetime.now().isoformat(),
+        'endpoint': '/api/messages'
+    })
+
+
+# Update your existing chat endpoint to work bidirectionally
+@app.route('/api/send-to-bot', methods=['POST'])
+def send_to_bot():
+    """
+    Send a message from web app to bot (using Direct Line)
+    This is your existing functionality, just renamed for clarity
+    """
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({
+                'status': 'error',
+                'message': 'No message provided'
+            }), 400
+        
+        # Check if bot credentials are configured
+        if not BOT_DIRECT_LINE_SECRET:
+            return jsonify({
+                'status': 'error',
+                'message': 'Bot not configured. Please set BOT_DIRECT_LINE_SECRET environment variable.'
+            })
+        
+        # Send message to bot via Direct Line
+        bot_response = bot_connector.send_message(message)
+        
+        # Handle response (your existing logic)
+        if isinstance(bot_response, dict) and 'error' in bot_response:
+            return jsonify({
+                'status': 'error',
+                'message': bot_response['error'],
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Message sent to bot',
+            'bot_responses': bot_response,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        logger.error(f"Error sending to bot: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
 
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
