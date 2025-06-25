@@ -68,7 +68,7 @@ HTML = """
 def get_bot_response(message):
     res = requests.get(
         'https://webchat.botframework.com/api/tokens',
-        headers={'Authorization': f'BotConnector {secret_key}'},)
+        headers={'Authorization': f'BotConnector {DIRECT_LINE_SECRET}'},)
     print(res)
     return res.status_code
     
