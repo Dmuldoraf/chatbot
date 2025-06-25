@@ -72,7 +72,7 @@ def get_bot_response(message):
     return res.status_code
     
 @app.route('/')
-def index():
+def index(): 
     return render_template_string(HTML)
 
 @app.route('/chat', methods=['POST'])
