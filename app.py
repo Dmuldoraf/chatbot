@@ -1,7 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify
 import requests
 
-
 app = Flask(__name__)
 DIRECT_LINE_SECRET  = 'DiMtbOKGJsDu9LMXJJ0xNl7ZFADepHnOY6pvuMaGvrb4qb8KvjjpJQQJ99BFACi5YpzAArohAAABAZBS3EaP.11KA8GxYHjchRBFnph8d5YNSaKXNjeuNFFHtox34FdRdJ9L8FC7aJQQJ99BFACi5YpzAArohAAABAZBSAr3v'
 HTML = """
@@ -65,7 +64,7 @@ HTML = """
 </html>
 """
 def get_bot_response(message):
-    res = requests.get(
+    res = requests.post(
         'https://directline.botframework.com/v3/directline/tokens/generate',
         headers={'Authorization': f'BotConnector {DIRECT_LINE_SECRET}'},)
     print(res)
@@ -83,4 +82,4 @@ def chat():
     return jsonify({'response': bot_response})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
