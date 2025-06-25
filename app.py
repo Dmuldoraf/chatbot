@@ -241,29 +241,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Azure Flask Web App</h1>
-        
-        <div class="status">
-            <h3>✅ Application Status: Running</h3>
-            <p>Deployed on Microsoft Azure Web App Service</p>
-            <p>Server Time: {{ current_time }}</p>
-        </div>
-
-        <div class="info-grid">
-            <div class="card">
-                <h3>📊 App Info</h3>
-                <p><strong>Python Version:</strong> {{ python_version }}</p>
-                <p><strong>Flask Version:</strong> {{ flask_version }}</p>
-                <p><strong>Environment:</strong> {{ environment }}</p>
-            </div>
-            
-            <div class="card">
-                <h3>🌐 Request Details</h3>
-                <p><strong>Your IP:</strong> {{ user_ip }}</p>
-                <p><strong>User Agent:</strong> {{ user_agent[:50] }}...</p>
-                <p><strong>Method:</strong> {{ method }}</p>
-            </div>
-        </div>
+        <h1>Cloud Übung EBI Gruppe 5</h1>
 
         <div class="card">
             <h3>🤖 Chat with Azure Bot</h3>
@@ -300,18 +278,6 @@ HTML_TEMPLATE = """
             </form>
             <div id="response"></div>
         </div>
-
-        <div class="card">
-            <h3>🔗 Available Endpoints</h3>
-            <ul>
-                <li><strong>GET /</strong> - This home page with bot chat</li>
-                <li><strong>GET /health</strong> - Health check endpoint</li>
-                <li><strong>POST /api/chat</strong> - Send message to Azure Bot</li>
-                <li><strong>POST /api/echo</strong> - Echo API for testing</li>
-                <li><strong>GET /info</strong> - System information</li>
-            </ul>
-        </div>
-    </div>
 
     <script>
         // Chat functionality
