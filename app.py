@@ -116,7 +116,8 @@ class BotConnector:
                 res = requests.get(f'http://ip-api.com/json/{ip}').json()
                 region = res.get('regionName', 'Unknown')
                 country = res.get('country', 'Unknown')
-                return f'{ip}-{region}-{country}'
+                city = res.get('city', 'Unknown')
+                return f'{ip}-{region}-{country}-{city}'
 
 
             if response.status_code == 200:
