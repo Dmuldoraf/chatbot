@@ -152,6 +152,7 @@ HTML_TEMPLATE = """
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             display: flex;
+            flex-direction: column; /* <-- Add this line */
             align-items: center;
             justify-content: center;
         }
@@ -159,7 +160,7 @@ HTML_TEMPLATE = """
         .chat-container {
             width: 90%;
             max-width: 600px;
-            height: 80vh;
+            height: 50vh;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
@@ -276,12 +277,12 @@ HTML_TEMPLATE = """
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            EBI Gruppe 5 - Azure Bot Chat
+            EBI Gruppe 5 - THMHelperBot
         </div>
         
         <div class="chat-messages" id="chatMessages">
             <div class="message bot-message">
-                Hello! I'm your Azure Bot. Send me a message to start chatting!
+                Hallo, ich bin der THMHelperBot! Wie kann ich dir helfen?
             </div>
         </div>
         
@@ -293,18 +294,39 @@ HTML_TEMPLATE = """
             <input 
                 type="text" 
                 id="messageInput" 
-                placeholder="Type your message here..." 
+                placeholder="Schreibe eine Nachricht..." 
                 required
                 autocomplete="off"
             >
-            <button type="submit" id="sendButton">Send</button>
+            <button type="submit" id="sendButton">Senden</button>
         </form>
         
         <div class="status" id="statusBar">
             Ready to chat
         </div>
     </div>
-
+        <!-- Group Members Card -->
+    <div style="
+        width: 90%;
+        max-width: 600px;
+        margin: 20px auto 0 auto;
+        background: #f1f3f6;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+        padding: 18px 24px;
+        font-size: 1em;
+        color: #333;
+        text-align: center;
+    ">
+        <strong>Gruppenmitglieder:</strong>
+        <ul style="list-style: none; padding: 0; margin: 10px 0 0 0;">
+            <li>Ahmad, Abdal</li>
+            <li>Ibrahim, Issa Samir</li>
+            <li>Lind, Philipp</li>
+            <li>Mandal, Bibesh Kumar</li>
+            <li>Warraich, Umer Saljok</li>
+        </ul>
+    </div>
     <script>
         const chatForm = document.getElementById('chatForm');
         const messageInput = document.getElementById('messageInput');
@@ -375,7 +397,7 @@ HTML_TEMPLATE = """
                             addMessage(botMessage.text, false, botMessage.type === 'error');
                         }
                     });
-                    updateStatus('Ready to chat');
+                    updateStatus('Bereit zu chatten');
                 } else {
                     // Show error
                     const errorText = result.message || 'Failed to get bot response';
@@ -437,7 +459,7 @@ def chat_with_bot():
         if not BOT_DIRECT_LINE_SECRET:
             return jsonify({
                 'status': 'error',
-                'message': 'Bot not configured. Please set BOT_DIRECT_LINE_SECRET environment variable.',
+                'message': 'Bot not correctly configured. Please set BOT_DIRECT_LINE_SECRET environment variable.',
                 'bot_responses': [{
                     'text': f'Echo (bot not configured): {message}',
                     'timestamp': datetime.now().isoformat(),
