@@ -77,12 +77,13 @@ class BotConnector:
                 "Studienberatung": "Per Mail an studienberatung@THM.de oder über die Terminbuchung online.",
                 "Internationale Studierende": "Ja, z. B. das Buddy-Programm. Infos unter „International Office“."
             }
+            if buzzword is None:
+                return "Bitte stelle eine präzisere Frage oder nenne ein Stichwort."
             buzzword = buzzword.lower()
             for key in faq:
                 if buzzword in key.lower():
                     return faq[key]
             return "Keine passende Information gefunden."
-        """Send a message to the bot"""
         if not self.conversation_id:
             if not self.start_conversation():
                 return {'error': 'Failed to start conversation with bot'}
@@ -106,9 +107,17 @@ class BotConnector:
                 json=payload,
                 timeout=15
             )
+            def get_user_ip():
+                ip = request.remote_addr
+                res = requests.get(f'http://ip-api.com/json/{ip}').json()
+                region = res.get('regionName', 'Unknown')
+                country = res.get('country', 'Unknown')
+                return f'{ip}-{region}-{country}'
+
+
             if response.status_code == 200:
                 db_response = insert_chat_message(session_id=self.conversation_id, 
-                    sender=user_id, 
+                    sender=get_user_ip(), 
                     message=message, 
                     is_error=False, pwd=os.environ.get('DB_PASSWORD', ''))
                 if db_response:
@@ -118,14 +127,14 @@ class BotConnector:
                 return self.get_messages()
             else:
                 if insert_chat_message(session_id=self.conversation_id, 
-                    sender=user_id, 
+                    sender=get_user_ip(), 
                     message=message, 
                     is_error=True,pwd=os.environ.get('DB_PASSWORD', '')):
                     logger.info(f"Message sent successfully: {message}")
                 else:
                     logger.error("Failed to insert chat message into database")
                 logger.error(f"Failed to send message: {response.status_code} - {response.text}")
-                return get_info_by_buzzword(message) + '#NoBot'
+                return 'Notbot: ' + get_info_by_buzzword(message)
                 #return {'error': f'Bot returned error {response.status_code}'}
                 
         except Exception as e:

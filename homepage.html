@@ -403,7 +403,7 @@
                 if (result.status === 'success' && result.bot_responses) {
                     debugLog(`Processing ${result.bot_responses.length} bot responses`, 'info');
                     
-                    // Add bot response (string)
+                    // Add bot response (as string)
                     addMessage(result.bot_responses, false, false);
                     debugLog(`Bot response: ${result.bot_responses.substring(0, 50)}...`, 'success');
                     updateStatus('Bereit zu chatten');
