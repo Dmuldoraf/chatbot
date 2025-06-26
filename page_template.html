@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Bot Chat - Debug Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* height: 100vh; */ /* Remove or comment out this line */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto; /* Add this line */
+        }
+        
+        .debug-panel {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .debug-panel h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .debug-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .debug-entry {
+            margin-bottom: 5px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .debug-info { background: #d1ecf1; color: #0c5460; }
+        .debug-error { background: #f8d7da; color: #721c24; }
+        .debug-success { background: #d4edda; color: #155724; }
+        
+        .chat-container {
+            width: 90%;
+            max-width: 600px;
+            height: 50vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+            margin-right: auto;
+        }
+        
+        .error-message {
+            background: #dc3545;
+            color: white;
+            margin-right: auto;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .chat-input input:focus {
+            border-color: #007bff;
+        }
+        
+        .chat-input button {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+        
+        .chat-input button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 5px 15px;
+            font-size: 12px;
+            color: #6c757d;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            background: #e9ecef;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            max-width: 80%;
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            EBI Gruppe 5 - THMHelperBot (Debug Mode)
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                Hallo, ich bin der THMHelperBot! Wie kann ich dir helfen?
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            Bot is typing...
+        </div>
+        
+        <form class="chat-input" id="chatForm">
+            <input 
+                type="text" 
+                id="messageInput" 
+                placeholder="Schreibe eine Nachricht..." 
+                required
+                autocomplete="off"
+            >
+            <button type="submit" id="sendButton">Senden</button>
+        </form>
+        
+        <div class="status" id="statusBar">
+            Bereit zu chatten
+        </div>
+    </div>
+
+    <!-- Group Members Card -->
+    <div style="
+        width: 90%;
+        max-width: 600px;
+        margin: 20px auto 0 auto;
+        background: #f1f3f6;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+        padding: 18px 24px;
+        font-size: 1em;
+        color: #333;
+        text-align: center;
+    ">
+        <strong>Gruppenmitglieder:</strong>
+        <ul style="list-style: none; padding: 0; margin: 10px 0 0 0;">
+            <li>Ahmad, Abdal</li>
+            <li>Ibrahim, Issa Samir</li>
+            <li>Mandal, Bibesh Kumar</li>
+            <li>Lind, Philipp</li>
+            <li>Warraich, Umer Saljok</li>
+        </ul>
+    </div>
+
+    <!-- Test Button -->
+    <div style="width: 90%; max-width: 600px; margin: 20px auto 0 auto; text-align: center;">
+        <button id="testButton" style="
+            padding: 12px 28px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        ">Test Connection</button>
+    </div>
+    <hr style="width:90%;max-width:600px;margin:30px auto 20px auto;border:0;border-top:2px solid #e0e0e0;">
+        <!-- Debug Panel -->
+    <div class="debug-panel">
+        <h3>Debug Log</h3>
+        <div class="debug-log" id="debugLog">
+            <div class="debug-entry debug-info">Application started</div>
+        </div>
+    </div>
+       <script>
+        // Debug logging function
+        function debugLog(message, type = 'info') {
+            const debugLog = document.getElementById('debugLog');
+            const entry = document.createElement('div');
+            entry.className = `debug-entry debug-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugLog.appendChild(entry);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(`[DEBUG ${type.toUpperCase()}] ${message}`);
+        }
+
+        // Test button functionality
+        document.getElementById('testButton').addEventListener('click', function() {
+            debugLog('Test button clicked', 'info');
+            updateStatus('Testing connection...');
+            addMessage('Testing connection to server...', false, false);
+
+            // Test server connection
+            fetch('/api/test-action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                debugLog(`Test response status: ${response.status}`, response.ok ? 'success' : 'error');
+                return response.json();
+            })
+            .then(data => {
+                debugLog(`Test response: ${JSON.stringify(data)}`, 'success');
+                addMessage('✅ Server connection successful: ' + data.message, false, false);
+                updateStatus('Connection test successful');
+            })
+            .catch(error => {
+                debugLog(`Test error: ${error.message}`, 'error');
+                addMessage('❌ Server connection failed: ' + error.message, false, true);
+                updateStatus('Connection test failed');
+            });
+        });
+
+        // Get DOM elements
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatMessages = document.getElementById('chatMessages');
+        const statusBar = document.getElementById('statusBar');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // Add message to chat
+        function addMessage(text, isUser = false, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : (isError ? 'error-message' : 'bot-message')}`;
+            messageDiv.textContent = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            debugLog(`Message added: ${isUser ? 'User' : 'Bot'} - ${text.substring(0, 50)}...`, 'info');
+        }
+
+        // Show/hide typing indicator
+        function showTyping(show = true) {
+            typingIndicator.style.display = show ? 'block' : 'none';
+            if (show) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            debugLog(`Typing indicator: ${show ? 'shown' : 'hidden'}`, 'info');
+        }
+
+        // Update status
+        function updateStatus(text) {
+            statusBar.textContent = text;
+            debugLog(`Status updated: ${text}`, 'info');
+        }
+
+        // Handle form submission
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            debugLog('Form submitted', 'info');
+            
+            const message = messageInput.value.trim();
+            if (!message) {
+                debugLog('Empty message, ignoring', 'info');
+                return;
+            }
+            
+            debugLog(`Sending message: "${message}"`, 'info');
+            
+            // Add user message
+            addMessage(message, true);
+            
+            // Clear input and disable button
+            messageInput.value = '';
+            sendButton.disabled = true;
+            updateStatus('Sending message...');
+            showTyping(true);
+            
+            try {
+                debugLog('Making fetch request to /api/chat', 'info');
+                
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                debugLog(`Response status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                debugLog(`Response data: ${JSON.stringify(result)}`, 'success');
+                
+                showTyping(false);
+                
+                if (result.status === 'success' && result.bot_responses) {
+                    debugLog(`Processing ${result.bot_responses.length} bot responses`, 'info');
+                    
+                    // Add bot responses
+                    result.bot_responses.forEach((botMessage, index) => {
+                        if (botMessage.text) {
+                            addMessage(botMessage.text, false, botMessage.type === 'error');
+                            debugLog(`Bot response ${index + 1}: ${botMessage.text.substring(0, 50)}...`, 'success');
+                        }
+                    });
+                    updateStatus('Bereit zu chatten');
+                } else {
+                    // Show error
+                    const errorText = result.message || 'Failed to get bot response';
+                    addMessage(`Error: ${errorText}`, false, true);
+                    updateStatus('Error occurred');
+                    debugLog(`Bot error: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                debugLog(`Fetch error: ${error.message}`, 'error');
+                showTyping(false);
+                addMessage(`Connection Error: ${error.message}`, false, true);
+                updateStatus('Connection failed');
+                console.error('Chat error:', error);
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+                debugLog('Form submission completed', 'info');
+            }
+        });
+
+        // Focus input on load
+        messageInput.focus();
+        debugLog('Input focused', 'info');
+        
+        // Handle Enter key
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                debugLog('Enter key pressed, submitting form', 'info');
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // Additional debugging
+        window.addEventListener('error', function(e) {
+            debugLog(`JavaScript error: ${e.message}`, 'error');
+        });
+
+        debugLog('Application initialized successfully', 'success');
+    </script>
+</body>
+</html>

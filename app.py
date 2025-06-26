@@ -1,9 +1,10 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template, render_template_string, request, jsonify
 import os
 import logging
 import requests
 import json
 from datetime import datetime
+from database_maintainer import insert_chat_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -65,6 +66,7 @@ class BotConnector:
             }
             
             payload = {
+                "locale": "de-DE",
                 'type': 'message',
                 'from': {'id': user_id},
                 'text': message
@@ -76,13 +78,26 @@ class BotConnector:
                 json=payload,
                 timeout=15
             )
-            
             if response.status_code == 200:
+                if insert_chat_message(session_id=self.conversation_id, 
+                    sender=user_id, 
+                    message=message, 
+                    is_error=False):
+                    logger.info(f"Message sent successfully: {message}")
+                else:
+                    logger.error("Failed to insert chat message into database")
                 # Wait for bot to process and respond
                 import time
                 time.sleep(2)
                 return self.get_messages()
             else:
+                if insert_chat_message(session_id=self.conversation_id, 
+                    sender=user_id, 
+                    message=message, 
+                    is_error=True):
+                    logger.info(f"Message sent successfully: {message}")
+                else:
+                    logger.error("Failed to insert chat message into database")
                 logger.error(f"Failed to send message: {response.status_code} - {response.text}")
                 return {'error': f'Bot returned error {response.status_code}'}
                 
@@ -132,309 +147,24 @@ class BotConnector:
 # Global bot connector instance
 bot_connector = BotConnector()
 
-# Minimal HTML template - CHAT ONLY
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azure Bot Chat</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            flex-direction: column; /* <-- Add this line */
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .chat-container {
-            width: 90%;
-            max-width: 600px;
-            height: 50vh;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .chat-header {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: #f8f9fa;
-        }
-        
-        .message {
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            border-radius: 15px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        
-        .user-message {
-            background: #007bff;
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-        
-        .bot-message {
-            background: #e9ecef;
-            color: #333;
-            margin-right: auto;
-        }
-        
-        .error-message {
-            background: #dc3545;
-            color: white;
-            margin-right: auto;
-        }
-        
-        .chat-input {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #dee2e6;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .chat-input input {
-            flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 25px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        
-        .chat-input input:focus {
-            border-color: #007bff;
-        }
-        
-        .chat-input button {
-            padding: 12px 24px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-        
-        .chat-input button:hover {
-            background: #0056b3;
-        }
-        
-        .chat-input button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        
-        .status {
-            padding: 5px 15px;
-            font-size: 12px;
-            color: #6c757d;
-            background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .typing-indicator {
-            display: none;
-            padding: 10px 15px;
-            background: #e9ecef;
-            border-radius: 15px;
-            margin-bottom: 15px;
-            max-width: 80%;
-            color: #6c757d;
-            font-style: italic;
-        }
-    </style>
-</head>
-<body>
-    <div class="chat-container">
-        <div class="chat-header">
-            EBI Gruppe 5 - THMHelperBot
-        </div>
-        
-        <div class="chat-messages" id="chatMessages">
-            <div class="message bot-message">
-                Hallo, ich bin der THMHelperBot! Wie kann ich dir helfen?
-            </div>
-        </div>
-        
-        <div class="typing-indicator" id="typingIndicator">
-            Bot is typing...
-        </div>
-        
-        <form class="chat-input" id="chatForm">
-            <input 
-                type="text" 
-                id="messageInput" 
-                placeholder="Schreibe eine Nachricht..." 
-                required
-                autocomplete="off"
-            >
-            <button type="submit" id="sendButton">Senden</button>
-        </form>
-        
-        <div class="status" id="statusBar">
-            Ready to chat
-        </div>
-    </div>
-        <!-- Group Members Card -->
-    <div style="
-        width: 90%;
-        max-width: 600px;
-        margin: 20px auto 0 auto;
-        background: #f1f3f6;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.07);
-        padding: 18px 24px;
-        font-size: 1em;
-        color: #333;
-        text-align: center;
-    ">
-        <strong>Gruppenmitglieder:</strong>
-        <ul style="list-style: none; padding: 0; margin: 10px 0 0 0;">
-            <li>Ahmad, Abdal</li>
-            <li>Ibrahim, Issa Samir</li>
-            <li>Lind, Philipp</li>
-            <li>Mandal, Bibesh Kumar</li>
-            <li>Warraich, Umer Saljok</li>
-        </ul>
-    </div>
-    <script>
-        const chatForm = document.getElementById('chatForm');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const chatMessages = document.getElementById('chatMessages');
-        const statusBar = document.getElementById('statusBar');
-        const typingIndicator = document.getElementById('typingIndicator');
-
-        // Add message to chat
-        function addMessage(text, isUser = false, isError = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : (isError ? 'error-message' : 'bot-message')}`;
-            messageDiv.textContent = text;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Show/hide typing indicator
-        function showTyping(show = true) {
-            typingIndicator.style.display = show ? 'block' : 'none';
-            if (show) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        }
-
-        // Update status
-        function updateStatus(text) {
-            statusBar.textContent = text;
-        }
-
-        // Handle form submission
-        chatForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Prevent page reload
-            
-            const message = messageInput.value.trim();
-            if (!message) return;
-            
-            // Add user message
-            addMessage(message, true);
-            
-            // Clear input and disable button
-            messageInput.value = '';
-            sendButton.disabled = true;
-            updateStatus('Sending message...');
-            showTyping(true);
-            
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: message })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const result = await response.json();
-                
-                showTyping(false);
-                
-                if (result.status === 'success' && result.bot_responses) {
-                    // Add bot responses
-                    result.bot_responses.forEach(botMessage => {
-                        if (botMessage.text) {
-                            addMessage(botMessage.text, false, botMessage.type === 'error');
-                        }
-                    });
-                    updateStatus('Bereit zu chatten');
-                } else {
-                    // Show error
-                    const errorText = result.message || 'Failed to get bot response';
-                    addMessage(`Error: ${errorText}`, false, true);
-                    updateStatus('Error occurred');
-                }
-                
-            } catch (error) {
-                showTyping(false);
-                addMessage(`Connection Error: ${error.message}`, false, true);
-                updateStatus('Connection failed');
-                console.error('Chat error:', error);
-            } finally {
-                sendButton.disabled = false;
-                messageInput.focus();
-            }
-        });
-
-        // Focus input on load
-        messageInput.focus();
-        
-        // Handle Enter key
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                chatForm.dispatchEvent(new Event('submit'));
-            }
-        });
-    </script>
-</body>
-</html>
-"""
+@app.route('/api/test-action', methods=['POST'])
+def test_action():
+    # Your Python logic here
+    # Test data for insert_chat_message
+    session_id = "test_session_123"
+    sender = "test_user"
+    message = "This is a test message from the test button."
+    is_error = False
+    insert_chat_message(session_id, sender, message, is_error)
+    print("Test button was clicked!")
+    return jsonify({'status': 'success', 'message': 'Python method triggered!'})
 
 @app.route('/')
 def home():
     """Main chat page"""
-    return render_template_string(HTML_TEMPLATE)
+    with open('page_template.html', encoding='utf-8') as f:
+        html_content = f.read()
+    return render_template_string(html_content)
 
 @app.route('/api/chat', methods=['POST'])
 def chat_with_bot():
