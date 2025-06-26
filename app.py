@@ -7,14 +7,11 @@ from database_maintainer import insert_chat_message
 from database_maintainer import get_all_chat_requests
 from dotenv import load_dotenv
 
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 load_dotenv()
 app = Flask(__name__)
 
-# Azure Bot Configuration
 BOT_DIRECT_LINE_SECRET = os.environ.get('BOT_DIRECT_LINE_SECRET', '')
 BOT_SERVICE_URL = os.environ.get('BOT_SERVICE_URL', 'https://directline.botframework.com')
 if not BOT_DIRECT_LINE_SECRET:
@@ -24,7 +21,7 @@ class BotConnector:
     def __init__(self):
         self.conversation_id = None
         self.token = None
-        self.watermark = None
+        self.watermark = None 
     
     def start_conversation(self):
 
@@ -45,7 +42,7 @@ class BotConnector:
                 data = response.json()
                 self.conversation_id = data['conversationId']
                 self.token = data.get('token', BOT_DIRECT_LINE_SECRET)
-                logger.info(f"Started conversation: {self.conversation_id}")
+                logger.info(f"Started convewrsation: {self.conversation_id}")
                 return True
             else:
                 logger.error(f"Failed to start conversation: {response.status_code} - {response.text}")
@@ -54,8 +51,37 @@ class BotConnector:
         except Exception as e:
             logger.error(f"Error starting conversation: {str(e)}")
             return False
-    
+
     def send_message(self, message, user_id="user123"):
+        def get_info_by_buzzword(sentence):
+            buzzwords = [
+            "Studiengänge",
+            "Prüfungen",
+            "Semester",
+            "Stundenplan",
+            "Rückmeldefrist",
+            "Bibliothek",
+            "Studienberatung",
+            "Internationale Studierende",
+            "International Office",
+            "HISinOne"
+            ]
+            buzzword = next((word for word in buzzwords if word.lower() in sentence.lower()), None)
+            faq = {
+                "Studiengänge": "Die Hochschule bietet die Studiengänge Informatik, BWL, Maschinenbau u. v. m. an.",
+                "Prüfungen": "Über das Online-Portal HISinOne. Die Fristen findest du unter „Prüfungsamt“.",
+                "Semesterbeginn": "Das Sommersemester: 1. April, Wintersemester: 1. Oktober.",
+                "Stundenplan": "Nach der Einschreibung findest du ihn im Campusportal unter „Mein Studium“.",
+                "Rückmeldefrist": "Die Rückmeldung ist bis zum 15. März (SoSe) bzw. 15. September (WiSe) möglich.",
+                "Bibliothek": "Unter THM.de/bibliothek findest du alle Infos.",
+                "Studienberatung": "Per Mail an studienberatung@THM.de oder über die Terminbuchung online.",
+                "Internationale Studierende": "Ja, z. B. das Buddy-Programm. Infos unter „International Office“."
+            }
+            buzzword = buzzword.lower()
+            for key in faq:
+                if buzzword in key.lower():
+                    return faq[key]
+            return "Keine passende Information gefunden."
         """Send a message to the bot"""
         if not self.conversation_id:
             if not self.start_conversation():
@@ -99,7 +125,8 @@ class BotConnector:
                 else:
                     logger.error("Failed to insert chat message into database")
                 logger.error(f"Failed to send message: {response.status_code} - {response.text}")
-                return {'error': f'Bot returned error {response.status_code}'}
+                return get_info_by_buzzword(message) + '#NoBot'
+                #return {'error': f'Bot returned error {response.status_code}'}
                 
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
@@ -124,8 +151,7 @@ class BotConnector:
             if response.status_code == 200:
                 data = response.json()
                 self.watermark = data.get('watermark')
-                
-                # Filter for bot messages
+
                 bot_messages = []
                 for activity in data.get('activities', []):
                     if activity.get('from', {}).get('id') != 'user123':
@@ -143,14 +169,13 @@ class BotConnector:
         except Exception as e:
             logger.error(f"Error getting messages: {str(e)}")
             return None
+        
+    
 
-# Global bot connector instance
 bot_connector = BotConnector()
 
 @app.route('/api/test-action', methods=['POST'])
 def test_action():
-    # Your Python logic here
-    # Test data for insert_chat_message
     session_id = "test_session_123"
     sender = "test_user"
     message = "This is a test message from the test button."
@@ -184,8 +209,7 @@ def chat_with_bot():
                 'status': 'error',
                 'message': 'No message provided'
             }), 400
-        
-        # Check if bot credentials are configured
+
         if not BOT_DIRECT_LINE_SECRET:
             return jsonify({
                 'status': 'error',
@@ -197,10 +221,8 @@ def chat_with_bot():
                 }]
             })
         
-        # Send message to bot
         bot_response = bot_connector.send_message(message)
-        
-        # Handle different response types
+
         if isinstance(bot_response, dict) and 'error' in bot_response:
             return jsonify({
                 'status': 'error',
@@ -218,7 +240,12 @@ def chat_with_bot():
                 'message': 'Message sent successfully',
                 'bot_responses': bot_response
             })
-        
+        elif isinstance(bot_response, str):
+            return jsonify({
+                'status': 'success',
+                'message': 'Message sent successfully',
+                'bot_responses': bot_response
+            })
         else:
             return jsonify({
                 'status': 'success',
