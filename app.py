@@ -79,13 +79,14 @@ class BotConnector:
                 timeout=15
             )
             if response.status_code == 200:
-                if insert_chat_message(session_id=self.conversation_id, 
+                db_response = insert_chat_message(session_id=self.conversation_id, 
                     sender=user_id, 
                     message=message, 
-                    is_error=False):
+                    is_error=False)
+                if db_response:
                     logger.info(f"Message sent successfully: {message}")
                 else:
-                    logger.error("Failed to insert chat message into database")
+                    logger.error("Failed database write ${db_response}")
                 # Wait for bot to process and respond
                 import time
                 time.sleep(2)

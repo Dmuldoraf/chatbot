@@ -32,7 +32,7 @@ def insert_chat_message(session_id, sender, message, is_error=False):
         return True
     except Error as e:
         print(f"❌ Error: {e}")
-        return False
+        return e
 
     finally:
         if cursor:
