@@ -16,6 +16,7 @@ BOT_DIRECT_LINE_SECRET = os.environ.get('BOT_DIRECT_LINE_SECRET', '')
 BOT_SERVICE_URL = os.environ.get('BOT_SERVICE_URL', 'https://directline.botframework.com')
 if not BOT_DIRECT_LINE_SECRET:
     logger.warning("BOT_DIRECT_LINE_SECRET is not set. Bot functionality will be limited.")
+
 class BotConnector:
     def __init__(self):
         self.conversation_id = None
@@ -275,7 +276,7 @@ HTML_TEMPLATE = """
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            🤖 Azure Bot Chat
+            EBI Gruppe 5 - Azure Bot Chat
         </div>
         
         <div class="chat-messages" id="chatMessages">
