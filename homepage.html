@@ -231,9 +231,9 @@
         </ul>
     </div>
 
-    <!-- Test Button -->
+    <!-- navDBView Button -->
     <div style="width: 90%; max-width: 600px; margin: 20px auto 0 auto; text-align: center;">
-        <button id="testButton" style="
+        <button id="navDBView" style="
             padding: 12px 28px;
             background: #4CAF50;
             color: white;
@@ -267,33 +267,10 @@
         }
 
         // Test button functionality
-        document.getElementById('testButton').addEventListener('click', function() {
-            debugLog('Test button clicked', 'info');
-            updateStatus('Testing connection...');
-            addMessage('Testing connection to server...', false, false);
-
-            // Test server connection
-            fetch('/api/test-action', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                debugLog(`Test response status: ${response.status}`, response.ok ? 'success' : 'error');
-                return response.json();
-            })
-            .then(data => {
-                debugLog(`Test response: ${JSON.stringify(data)}`, 'success');
-                addMessage('✅ Server connection successful: ' + data.message, false, false);
-                updateStatus('Connection test successful');
-            })
-            .catch(error => {
-                debugLog(`Test error: ${error.message}`, 'error');
-                addMessage('❌ Server connection failed: ' + error.message, false, true);
-                updateStatus('Connection test failed');
+        document.getElementById('navDBView').addEventListener('click', function(event) {
+                event.preventDefault(); // Prevent form submission if inside a form
+                window.location.href = '/dbview'; // Navigate to the new page
             });
-        });
 
         // Get DOM elements
         const chatForm = document.getElementById('chatForm');

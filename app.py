@@ -2,14 +2,16 @@ from flask import Flask, render_template, render_template_string, request, jsoni
 import os
 import logging
 import requests
-import json
 from datetime import datetime
 from database_maintainer import insert_chat_message
+from database_maintainer import get_all_chat_requests
+from dotenv import load_dotenv
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+load_dotenv()
 app = Flask(__name__)
 
 # Azure Bot Configuration
@@ -82,20 +84,17 @@ class BotConnector:
                 db_response = insert_chat_message(session_id=self.conversation_id, 
                     sender=user_id, 
                     message=message, 
-                    is_error=False)
+                    is_error=False, pwd=os.environ.get('DB_PASSWORD', ''))
                 if db_response:
                     logger.info(f"Message sent successfully: {message}")
                 else:
                     logger.error("Failed database write ${db_response}")
-                # Wait for bot to process and respond
-                import time
-                time.sleep(2)
                 return self.get_messages()
             else:
                 if insert_chat_message(session_id=self.conversation_id, 
                     sender=user_id, 
                     message=message, 
-                    is_error=True):
+                    is_error=True,pwd=os.environ.get('DB_PASSWORD', '')):
                     logger.info(f"Message sent successfully: {message}")
                 else:
                     logger.error("Failed to insert chat message into database")
@@ -156,14 +155,14 @@ def test_action():
     sender = "test_user"
     message = "This is a test message from the test button."
     is_error = False
-    insert_chat_message(session_id, sender, message, is_error)
+    insert_chat_message(session_id, sender, message, is_error, pwd=os.environ.get('DB_PASSWORD', ''))
     print("Test button was clicked!")
     return jsonify({'status': 'success', 'message': 'Python method triggered!'})
 
 @app.route('/')
 def home():
     """Main chat page"""
-    with open('page_template.html', encoding='utf-8') as f:
+    with open('homepage.html', encoding='utf-8') as f:
         html_content = f.read()
     return render_template_string(html_content)
 
@@ -251,6 +250,27 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
+@app.route('/api/get_execute_requests', methods=['GET'])
+def get_execute_requests():
+    """Return all chat messages from the database"""
+    return get_all_chat_requests(pwd=os.environ.get('DB_PASSWORD', ''))
+    # try:
+    #     messages = get_all_chat_requests()
+    #     return messages
+    # except Exception as e:
+    #     logger.error(f"Error fetching chat messages: {str(e)}")
+    #     return jsonify({
+    #         'status': 'error',
+    #         'message': f'Failed to fetch chat messages: {str(e)}'
+    #     }), 500
+
+@app.route('/dbview')
+def db_view():
+    """Render the database view page"""
+    with open('db_view.html', encoding='utf-8') as f:
+        html_content = f.read()
+
+    return render_template_string(html_content)
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(
