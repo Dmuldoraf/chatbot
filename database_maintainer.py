@@ -3,8 +3,6 @@ from mysql.connector import Error
 
 def insert_chat_message(session_id, sender, message, is_error=False, pwd=None):
     try:
-        # Establish connection
-        # DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
         cnx = mysql.connector.connect(
             user="gpsshbubsq",
             password=pwd,
@@ -41,8 +39,6 @@ def insert_chat_message(session_id, sender, message, is_error=False, pwd=None):
 
 def get_all_chat_requests(pwd=None):
     try:
-        # DB_PASSWORD = os.environ.get('DB_PASSWORD', 'default')
-        print(f"🔑 Using DB_PASSWORD: {pwd}")  # Debugging line to check password
         cnx = mysql.connector.connect(
             user="gpsshbubsq",
             password=pwd,

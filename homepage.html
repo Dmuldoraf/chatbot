@@ -12,14 +12,13 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            /* height: 100vh; */ /* Remove or comment out this line */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow-y: auto; /* Add this line */
+            overflow-y: auto; 
         }
         
         .debug-panel {
@@ -155,7 +154,65 @@
             background: #6c757d;
             cursor: not-allowed;
         }
-        
+        #sendButton {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 24px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+        }
+
+        #sendButton:hover:not(:disabled) {
+            background: linear-gradient(135deg, #0056b3, #007bff);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,123,255,0.22);
+        }
+
+        #sendButton:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        #sendButton:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #navdbview {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        #navdbview:hover {
+            background: linear-gradient(135deg, #20c997, #17a2b8);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        #navdbview:active {
+            transform: translateY(0);
+        }
+
+        #navdbview:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
         .status {
             padding: 5px 15px;
             font-size: 12px;
@@ -179,7 +236,7 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            EBI Gruppe 5 - THMHelperBot (Debug Mode)
+            EBI Gruppe 5 - THMHelperBot
         </div>
         
         <div class="chat-messages" id="chatMessages">
@@ -207,7 +264,13 @@
             Bereit zu chatten
         </div>
     </div>
+    <!-- navDBView Button -->
+    <div style="width: 90%; max-width: 600px; margin: 20px auto 0 auto; text-align: center;">
+        <button id="navdbview">Datenbank</button>
+   
+   <hr style="width:90%;max-width:600px;margin:30px auto 20px auto;border:0;border-top:2px solid #e0e0e0;">    
 
+</div>
     <!-- Group Members Card -->
     <div style="
         width: 90%;
@@ -220,6 +283,7 @@
         font-size: 1em;
         color: #333;
         text-align: center;
+        margin-bottom:20px;
     ">
         <strong>Gruppenmitglieder:</strong>
         <ul style="list-style: none; padding: 0; margin: 10px 0 0 0;">
@@ -231,22 +295,7 @@
         </ul>
     </div>
 
-    <!-- navDBView Button -->
-    <div style="width: 90%; max-width: 600px; margin: 20px auto 0 auto; text-align: center;">
-        <button id="navDBView" style="
-            padding: 12px 28px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            font-size: 1em;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
-        ">Test Connection</button>
-    </div>
-    <hr style="width:90%;max-width:600px;margin:30px auto 20px auto;border:0;border-top:2px solid #e0e0e0;">
-        <!-- Debug Panel -->
+         <!-- Debug Panel -->
     <div class="debug-panel">
         <h3>Debug Log</h3>
         <div class="debug-log" id="debugLog">
@@ -267,7 +316,7 @@
         }
 
         // Test button functionality
-        document.getElementById('navDBView').addEventListener('click', function(event) {
+        document.getElementById('navdbview').addEventListener('click', function(event) {
                 event.preventDefault(); // Prevent form submission if inside a form
                 window.location.href = '/dbview'; // Navigate to the new page
             });
