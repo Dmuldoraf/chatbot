@@ -108,7 +108,11 @@ class BotConnector:
                 timeout=15
             )
             def get_user_ip():
-                ip = request.remote_addr
+                if 'X-Forwarded-For' in request.headers:
+                    # Can contain multiple IPs, take the first one
+                    ip = request.headers['X-Forwarded-For'].split(',')[0].strip()
+                else:
+                    ip = request.remote_addr
                 res = requests.get(f'http://ip-api.com/json/{ip}').json()
                 region = res.get('regionName', 'Unknown')
                 country = res.get('country', 'Unknown')

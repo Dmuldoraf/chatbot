@@ -42,7 +42,7 @@ def get_all_chat_requests(pwd=None):
             database="chat_requests",
         )
         cursor = cnx.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM chat_messages")
+        cursor.execute("SELECT * FROM chat_messages ORDER BY id DESC")
         results = cursor.fetchall()
         cursor.close()
         return results
