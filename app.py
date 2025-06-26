@@ -110,7 +110,7 @@ class BotConnector:
             def get_user_ip():
                 if 'X-Forwarded-For' in request.headers:
                     # Can contain multiple IPs, take the first one
-                    ip = request.headers['X-Forwarded-For'].split(',')[0].strip()
+                    ip = request.headers['X-Forwarded-For'].split(',')[0].strip().split(':')[0]
                 else:
                     ip = request.remote_addr
                 res = requests.get(f'http://ip-api.com/json/{ip}').json()
